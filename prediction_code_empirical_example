@@ -1,0 +1,145 @@
+#Program for the empirical example
+#data
+d0=read.csv("data1.csv")
+com1<-d0[,7]
+com<-0;nn<-length(com1)
+x0<-0
+for (i in 1:(nn-1)){
+x0[i]<-log(com1[i+1]/com1[i])
+}
+nn1=length(x0);mpr1=0;mpr3=0;mpr4=0
+mspr1=0;mspr3=0;mspr4=0
+mape1=0;mape3=0;mape4=0
+pr33=0;pr44=0
+for (n in 225:nn1){
+h<-5;n1=n-h
+#The new method
+m=1000;H1=.9
+c1=matrix(0,nrow=n1,ncol=2*m)
+for (t in 1:n1){
+for (j1 in 1:m){
+c1[t,j1]=cos(t/H1*pi*j1/m)
+c1[t,j1+m]=sin(t/H1*pi*j1/m)
+}
+}
+x1=x0[c(1:n1)]
+A=Solve(c1,x1);w2=0;pr1=0;pr11=0;pr111=0
+for (i1 in 1:h){
+w1=0;t1=n1+i1
+for (j in 1:m){
+w1[j]=cos(t1/H1*pi*j/m)*A[j]
+w1[j+m]=sin(t1/H1*pi*j/m)*A[j+m]
+}
+w2[i1]=sum(w1)
+pr1[i1]=sum(w1)-x0[n1+i1]
+pr11[i1]=100*abs(pr1[i1]/x0[n1+i1])
+pr111[i1]=pr1[i1]/mean(abs(diff(x1)))
+}
+#The neural network method
+fit1 <- nnetar(x1, size=2)
+f1=forecast(fit1, h=5);pr3=0
+pr3=f1$mean-x0[c((n1+1):(n1+h))]
+###########################################
+###########################################
+#The SSA method
+M=floor(2*n1/3)
+rmseh=matrix(0,nrow=M/2-1,ncol=M/2-1)
+for (l in 2:(M/2)){
+for (r in 1:(l-1)){
+k1=n1-l+1
+xx=matrix(0,nrow=l,ncol=k1)
+for (i in 1:k1){
+xx[,i]=x0[i:(l+i-1)]
+}
+ei=eigen(xx%*%t(xx))
+ev=ei$values
+eve=ei$vectors
+pim=matrix(0,nrow=l-1,ncol=r)
+j=1:r
+pim[,j]=eve[c(1:(l-1)),j]
+pim1=0
+j1=1:r
+pim1[j1]=eve[l,j1]
+nu2=sum(pim1^2)
+R1=rowSums(nu2*pim)/(1-nu2)
+R2=0
+i2=1:(l-1)
+R2=R1[l-1-i2+1];rmse=0;x2=0
+for (i3 in 1:(n1-M-h+1)){ 
+x2[i3:(M+i3-1)]=x0[i3:(M+i3-1)]
+for (h1 in 1:h){
+e1=0
+j3=1:(l-1)
+e1[j3]=R2[j3]*x2[M+i3+h1-1-j3]
+x2[M+i3+h1-1]=sum(e1)
+}
+rmse[i3]=sqrt(mean((x2[(M+i3):(M+h+i3-1)]-x0[(M+i3):(M+h+i3-1)])^2))
+}
+rmseh[l-1,r]=mean(rmse)
+}
+}
+
+rmseh1=matrix(0,nrow=M/2-1,ncol=M/2-1)
+for (l in 2:(M/2)){
+for (r in 1:(M/2-1)){
+if (rmseh[l-1,r]==0) rmseh1[l-1,r]=max(rmseh) else rmseh1[l-1,r]=rmseh[l-1,r]
+}} 
+d2=which(rmseh1 == min(rmseh1), arr.ind = TRUE)
+l=d2[1,1]+1
+r=d2[1,2]
+#############################################
+xx=matrix(0,nrow=l,ncol=k1)
+for (i in 1:k1){
+xx[,i]=x0[i:(l+i-1)]
+}
+ei=eigen(xx%*%t(xx))
+ev=ei$values
+eve=ei$vectors
+pim=matrix(0,nrow=l-1,ncol=r)
+j=1:r
+pim[,j]=eve[c(1:(l-1)),j]
+pim1=0
+j1=1:r
+pim1[j1]=eve[l,j1]
+nu2=sum(pim1^2)
+R1=rowSums(nu2*pim)/(1-nu2)
+R2=0
+i2=1:(l-1)
+R2=R1[l-1-i2+1]
+x2[1:n1]=x0[1:n1]
+for (h1 in 1:h){
+e1=0
+j3=1:(l-1)
+e1[j3]=R2[j3]*x2[n1-j3+1+h1-1]
+x2[n1+h1]=sum(e1)
+}
+pr4=0
+pr4=x2[(n1+1):(n1+h)]-x0[(n1+1):(n1+h)]
+
+###########################################
+###########################################
+for (i10 in 1:h){
+pr33[i10]=100*abs(pr3[i10]/x0[n1+i10])
+pr44[i10]=100*abs(pr4[i10]/x0[n1+i10])
+}
+mpr1[n-224]=mean(abs(pr1))
+mspr1[n-224]=sqrt(mean(abs(pr1)^2))
+mape1[n-224]=mean(pr11)
+mpr3[n-224]=mean(abs(pr3))
+mspr3[n-224]=sqrt(mean(abs(pr3)^2))
+mape3[n-224]=mean(pr33)
+mpr4[n-224]=mean(abs(pr4))
+mspr4[n-224]=sqrt(mean(abs(pr4)^2))
+mape4[n-224]=mean(pr44)
+}
+#MAD, RMSE, and MAPE
+mean(mpr1)
+mean(mpr3)
+mean(mpr4)
+mean(mspr1)
+mean(mspr3)
+mean(mspr4)
+mean(mape1)
+mean(mape3)
+mean(mape4)
+
